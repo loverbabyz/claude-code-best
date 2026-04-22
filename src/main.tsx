@@ -242,7 +242,6 @@ import {
 import { ensureModelStringsInitialized } from "./utils/model/modelStrings.js";
 import { PERMISSION_MODES } from "./utils/permissions/PermissionMode.js";
 import {
-	checkAndDisableBypassPermissions,
 	getAutoModeEnabledStateIfCached,
 	initializeToolPermissionContext,
 	initialPermissionModeFromCLI,
@@ -3910,19 +3909,7 @@ async function run(): Promise<CommanderCommand> {
 					onChangeAppState,
 				);
 
-				// Check if bypassPermissions should be disabled based on Statsig gate
-				// This runs in parallel to the code below, to avoid blocking the main loop.
-				if (
-					toolPermissionContext.mode === "bypassPermissions" ||
-					allowDangerouslySkipPermissions
-				) {
-					void checkAndDisableBypassPermissions(
-						toolPermissionContext,
-					);
-				}
-
 				// Async check of auto mode gate — corrects state and disables auto if needed.
-				// Gated on TRANSCRIPT_CLASSIFIER (not USER_TYPE) so GrowthBook kill switch runs for external builds too.
 				if (feature("TRANSCRIPT_CLASSIFIER")) {
 					void verifyAutoModeGateAccess(
 						toolPermissionContext,
@@ -6563,6 +6550,15 @@ async function run(): Promise<CommanderCommand> {
 				await installHandler(target, options);
 			},
 		);
+
+	// claude update — update ccb to the latest version via npm or bun
+	program
+		.command("update")
+		.description("Update claude-code-best (ccb) to the latest version")
+		.action(async () => {
+			const { updateCCB } = await import("./cli/updateCCB.js");
+			await updateCCB();
+		});
 
 	// ant-only commands
 	if (process.env.USER_TYPE === "ant") {
